@@ -3,6 +3,10 @@ DCGAN-based synthesizer using GM Sound Source as learning material
 
 This project is still in the experimental stage, and I plan to add new features and improve model accuracy in the future.
 
+## Demonstration
+[Youtube<img width="845" alt="reverb" src="https://github.com/user-attachments/assets/86647976-46d6-43e5-8b9b-91dd0a3a5f7f" />](https://youtu.be/FGrxxtUx-4M)
+
+
 ## Folder Structure
 
 - `inputAudio/` – It contains audio files of the study data.
