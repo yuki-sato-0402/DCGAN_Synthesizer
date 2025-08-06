@@ -20,4 +20,5 @@ No need to install anything locally — everything runs in the cloud.
 Each step is explained in the notebook itself.
 
 ## About Training Data
-In this project, I have collected about 110 types of GM (Fluid synth) C4 (note 60) sound sources. Information about Fluid Synth can be found [here](https://pypi.org/project/pyfluidsynth/).
+In this project, The data for training is generated in the program by combining SoundFont and FluidSynth.
+SoundFont can be downloaded from [here](https://musical-artifacts.com/artifacts?formats=sf2&tags=soundfont).
