@@ -20,5 +20,5 @@ No need to install anything locally — everything runs in the cloud.
 Each step is explained in the notebook itself.
 
 ## About Training Data
-In this project, The data for training is generated in the program by combining SoundFont and FluidSynth.
+In this project, The data for training is generated in the program by combining SoundFont and FluidSynth.  
 SoundFont can be downloaded from [here](https://musical-artifacts.com/artifacts?formats=sf2&tags=soundfont).
