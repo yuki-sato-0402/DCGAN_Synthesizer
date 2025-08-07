@@ -14,7 +14,7 @@ This project is still in the experimental stage, and I plan to add new features 
 - `model/` – This is the folder where the trained models are output. generator outputs two types of files, pth and onnx, while discriminator outputs only the pth file. Only the generator is required for model inference.
 
 ## How to Use
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/yuki-sato-0402/DCGAN_Synthesizer/blob/main/GAN_Audio_Colab.ipynb)  
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/yuki-sato-0402/DCGAN_Synthesizer/blob/main/DCGAN_Synthesizer.ipynb)  
 Just open the notebook(s) in Google Colab and run all the cells from top to bottom.  
 No need to install anything locally — everything runs in the cloud.  
 Each step is explained in the notebook itself.
