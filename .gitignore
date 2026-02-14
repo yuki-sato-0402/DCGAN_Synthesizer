@@ -1,0 +1,5 @@
+trainingData/*
+!/trainingData/.gitkeep
+outputAuido/*
+!/outputAudio/.gitkeep
+Touhou.sf2

@@ -1,0 +1,10 @@
+librosa
+matplotlib
+numpy==1.26.4
+pretty_midi
+scipy
+torch
+pyfluidsynth
+onnx 
+onnxruntime 
+onnxscript
