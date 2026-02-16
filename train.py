@@ -32,7 +32,6 @@ def trainModel(preprocessor, generator, discriminator, train_loader, device):
         n_total = 0  # Total number of data (used for accuracy calculation)
         for j, (x,) in enumerate(train_loader):  # Extract mini batch (x,)
 
-            # print("x max:", x.max().item(), "x min:", x.min().item())
             n_total += x.size()[0]  # Cumulative batch size
 
             # Generate images from noise and train the discriminator
@@ -40,11 +39,10 @@ def trainModel(preprocessor, generator, discriminator, train_loader, device):
             imgs_fake = generator(noise)  # Image generation
             t = torch.zeros(x.size()[0], 1).to(device)  # The correct answer is 0.
 
-            # print("first")
+            #print(f"Input shape Generator: {noise.shape}")
             y = discriminator(imgs_fake)
 
-            # print("y ", y.shape)
-            # print("t ", t.shape)
+            #print("y ", y.shape)
             loss = loss_func(y, t)
             optimizer_disc.zero_grad()
             loss.backward()
@@ -93,7 +91,7 @@ def trainModel(preprocessor, generator, discriminator, train_loader, device):
             print ("Error_fake:", loss_fake , "Acc_fake:", acc_fake)
             # Discriminator error and accuracy for real images
             print ("Error_real:", loss_real , "Acc_real:", acc_real)
-            generate_images(generator, preprocessor, device)
+            #generate_images(generator, preprocessor, device)
 
     # Save trained model
     torch.save(generator.state_dict(), "model/generator.pth")
@@ -130,10 +128,10 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     generator.to(device)
     print(f"Using device: {device}")
-    print(generator)
+    #print(generator)
 
     discriminator = Discriminator(preprocessor)
     discriminator.to(device)
-    print(discriminator)
+    #print(discriminator)
 
     trainModel(preprocessor, generator, discriminator, train_loader, device)

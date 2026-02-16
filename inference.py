@@ -12,14 +12,17 @@ from IPython.display import Audio, display
 def inference_gan(preprocessor, time_frames):
     # Preparing the Generator Model
     generator = Generator(preprocessor)
-    generator.load_state_dict(torch.load("model/generator.pth", map_location="cpu"))
+    model_path = "model/generator.pth"
+    if os.path.exists(model_path):
+        generator.load_state_dict(torch.load(model_path, map_location="cpu"))
+        
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     generator.to(device)
     generator.eval()
 
     # Hyperparameters (same as VAE)
     n_noise = preprocessor.n_noise
-    n_mels = preprocessor.n_mels
+    #n_mels = preprocessor.n_mels
     sample_rate = preprocessor.sample_rate
     hop_length = preprocessor.hop_length
     n_fft = preprocessor.n_fft
@@ -32,32 +35,46 @@ def inference_gan(preprocessor, time_frames):
 
     # Generating a Mer Spectrogram with Generator
     with torch.no_grad():
+        # shape [1, 2, freq, time]
         y = generator(z).cpu().numpy()
 
-    # If the shape is [batch, channels, mel, time], use reshape.
-    print("y.shape:", y.shape)
-    image = y.reshape(n_mels, time_frames)
-    print("image.shape:", image.shape)
-
-    # Displaying the Mer Spectrogram
-    plt.figure(figsize=(4, 4))
-    librosa.display.specshow(image, sr=sample_rate, hop_length=hop_length, x_axis='time', y_axis='mel')
-    plt.colorbar(format="%+2.0f dB")
-    plt.title("Generated Mel-Spectrogram (GAN)")
+    # 1. Channel separation
+    # y[0, 0] is amplitude (mag), y[0, 1] is phase difference (phase_diff)
+    mag_norm = y[0, 0, :, :]
+    phase_diff_norm = y[0, 1, :, :]
+    
+    # 2. Amplitude Restoration (Denormalization [-1, 1] → dB → Linear)
+    mag_db = (mag_norm + 1) / 2 * (max_db - min_db) + min_db
+    magnitude = librosa.db_to_amplitude(mag_db)
+    
+    # 3. Phase Restoration (Denormalization [-1, 1] → Phase Difference)
+    phase_diff = phase_diff_norm * np.pi  # Scale back to [-π, π]
+    
+    #Accumulate phase difference in the frame (time axis) direction to restore phase
+    phase = np.cumsum(phase_diff, axis=1)
+    
+    # 4. Reconstruction of Complex STFT
+    real = magnitude * np.cos(phase)
+    imag = magnitude * np.sin(phase)
+    #It is customary to use j rather than i for the imaginary unit.
+    stft_reconstructed = real + 1j * imag  # Convert to a complex array
+    
+    # 5. Visualization (Display amplitude components)
+    plt.figure(figsize=(10, 4))
+    librosa.display.specshow(librosa.amplitude_to_db(magnitude, ref=np.max),
+                             sr=sample_rate, hop_length=hop_length, y_axis='mel', x_axis='time')
+    plt.colorbar(format='%+2.0f dB')
+    plt.title('Generated STFT Magnitude')
+    plt.tight_layout()
     plt.show()
+    
 
-    # Converting a mel-spectrogram to audio (dB scale → power spectrum)
-    mel_spec_db = image * (max_db - min_db) + min_db
-    mel_spec = librosa.db_to_power(mel_spec_db)
-
-    # Voice restoration by Griffin-Lim
-    audio = librosa.feature.inverse.mel_to_audio(
-        mel_spec,
-        sr=sample_rate,
-        n_fft=n_fft,
-        hop_length=hop_length,
-        n_iter=32
-    )
+    # 6. Speech Restoration Using iSTFT (Griffin-Lim Not Required)
+    audio = librosa.istft(
+            stft_reconstructed,
+            hop_length=hop_length,
+            n_fft=n_fft
+        )
 
     audio = audio / (np.max(np.abs(audio)) + 1e-8)
 
@@ -72,8 +89,8 @@ if __name__ == "__main__":
 
     targetSamplerate = 22050
     preprocessor = AudioPreprocessor(targetSamplerate )
-    processed_mel_specs = preprocessor.process_single_file("60note_1.wav")  # Process a single file to determine time_frames
-    print(processed_mel_specs[0].shape[1])  # Print the number of time frames in the mel-spectrogram
-    
-    inference_gan(preprocessor, processed_mel_specs[0].shape[1])
+    processed_stft = preprocessor.process_single_file("60note_1.wav")  # Process a single file to determine time_frames
+    print(processed_stft[0].shape[1])  # Print the number of time frames in the stft
+    inference_gan(preprocessor, processed_stft[0].shape[1])
+
 

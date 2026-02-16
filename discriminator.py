@@ -11,28 +11,27 @@ class Discriminator(nn.Module):
         Feature extraction and downsampling using convolutional layers
         In the DCGAN paper, BatchNorm is recommended for Discriminator layers other than the first layer.
         '''
-        # 128x87 → 64x43　 ((87 + 2 - 4) / 2 + 1)
-        self.conv1 = nn.Conv2d(1, 16, kernel_size=4, stride=2, padding=1)
-        # LeakyReLU only (do not apply BatchNorm to the first layer - recommended by DCGAN paper)
-
-        # 64x43 → 32x21　torch.Size([16, 32, 32, 26])
+        # 513x87 → 256x43
+        self.conv1 = nn.Conv2d(2, 16, kernel_size=4, stride=2, padding=1)
+       
+        # 256x43 → 128x21
         self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2, padding=1)
         self.bn2 = nn.BatchNorm2d(32)
 
-        # 32x21 → 16x10
+        # 128x21 → 64x10
         self.conv3 = nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1)
         self.bn3 = nn.BatchNorm2d(64)
 
-        # 16x10 → 8x5
+        # 64x10 → 32x5
         self.conv4 = nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1)
         self.bn4 = nn.BatchNorm2d(128)
 
-        # 8x5 → 4x2
+        # 32x5 → 16x2
         self.conv5 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)
         self.bn5 = nn.BatchNorm2d(256)
 
-        # final determination layer - 4x2 → 1x1
-        self.conv6 = nn.Conv2d(256, 1, kernel_size=(4, 2), stride=1, padding=0)
+        # 16x2 → 1x1
+        self.conv6 = nn.Conv2d(256, 1, kernel_size=(16, 2), stride=1, padding=0)
 
         # Dropout (optional - improves model stability)
         self.dropout = nn.Dropout2d(0.3)
@@ -41,12 +40,13 @@ class Discriminator(nn.Module):
     def forward(self, x):
         #Convert to one dimension.
 
-        x = x.view(x.size(0), 1, self.preprocessor.n_mels, -1)  #(batch size, number of channels, height, width)
-        # print(f"Input shape Discriminator: {x.shape}")
+        #x = x.view(x.size(0), 1, self.preprocessor.n_mels, -1)  #(batch size, number of channels, height, width)
+        ##x = x.view(x.size(0), 2, self.preprocessor.n_fft // 2 + 1, x.size(-1)) # Reshape to (batch_size, channels, height, width)
+        #print(f"Input shape Discriminator: {x.shape}")
 
         # Downsampling through a convolutional layer
         x = F.leaky_relu(self.conv1(x), negative_slope=0.2)
-        # print(f"After conv1: {x.shape}")
+        #print(f"After conv1: {x.shape}")
 
         x = F.leaky_relu(self.bn2(self.conv2(x)), negative_slope=0.2)
         # print(f"After conv2: {x.shape}")
@@ -69,6 +69,6 @@ class Discriminator(nn.Module):
 
         # Transform into a shape with a batch size * 1
         x = x.view(-1, 1)
-        # print(f"Final output: {x.shape}")
+        #print(f"Final output: {x.shape}")
         return x
 

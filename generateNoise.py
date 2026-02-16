@@ -28,10 +28,10 @@ def generate_images(generator, preprocessor, device):
             left = c*n_mels_spaced
             matrix_image[top : top+preprocessor.time_frames, left : left+preprocessor.n_mels] = g_img
 
-    #plt.figure(figsize=(8, 8))
-    #plt.imshow(matrix_image, cmap="Greys_r", vmin=0.0, vmax=1.0)
-    #plt.tick_params(labelbottom=False, labelleft=False, bottom=False, left=False)  # Erase axis labels and lines
-    #plt.show()
+    plt.figure(figsize=(8, 8))
+    plt.imshow(matrix_image, cmap="Greys_r", vmin=0.0, vmax=1.0)
+    plt.tick_params(labelbottom=False, labelleft=False, bottom=False, left=False)  # Erase axis labels and lines
+    plt.show()
 
 
 # Calculation of correct answers
