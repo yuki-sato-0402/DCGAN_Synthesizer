@@ -14,11 +14,26 @@ This project is still in the experimental stage, and I plan to add new features 
 - `model/` – This is the folder where the trained models are output. generator outputs two types of files, pth and onnx, while discriminator outputs only the pth file. Only the generator is required for model inference.
 
 ## How to Use
+### Running Locally
+You can choose between two preprocessing modes: `stft` (STFT + Phase Difference) and `mel` (Mel-spectrogram).
+
+**To train the model:**
+```bash
+python train.py --mode mel  # or --mode stft
+```
+
+**To generate audio:**
+```bash
+python inference.py --mode mel  # or --mode stft
+```
+
+### Google Colab
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/yuki-sato-0402/DCGAN_Synthesizer/blob/main/DCGAN_Synthesizer.ipynb)  
 Just open the notebook(s) in Google Colab and run all the cells from top to bottom.  
 No need to install anything locally — everything runs in the cloud.  
 Each step is explained in the notebook itself.
 
 ## About Training Data
-In this project, The data for training is generated in the program by combining SoundFont and FluidSynth.  
-SoundFont can be downloaded from [here](https://musical-artifacts.com/artifacts?formats=sf2&tags=soundfont).
+In this project, the data for training is generated in the program by combining SoundFont and FluidSynth.  
+
+**Note:** The `Touhou.sf2` SoundFont file is required for audio generation but is not included in this repository. You must download and install it manually. SoundFonts can be found on sites like [Musical Artifacts](https://musical-artifacts.com/artifacts?formats=sf2&tags=soundfont).

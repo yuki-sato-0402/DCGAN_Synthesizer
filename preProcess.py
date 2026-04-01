@@ -36,15 +36,17 @@ class PaddedBatchSampler(Sampler):
         return self.dataset_size + padding_size
 
 class AudioPreprocessor:
-    def __init__(self, Target_Samplerate):
+    def __init__(self, Target_Samplerate, mode='stft'):
         self.sample_rate = Target_Samplerate
+        self.mode = mode
         self.segment_length = 2 * self.sample_rate  # Number of samples for 2 seconds
         self.min_length = int(1.5 * self.sample_rate)  # Number of samples for 1.5 seconds
-        #self.n_mels = 128  #Height of output of melspectrogram (number of dimensions)
-        self.hop_length = 512
+        self.n_mels = 128  #Height of output of melspectrogram (number of dimensions)
+        self.hop_length = 512  # Number of samples between successive frames (time resolution)
 
         # The number of noise "How diverse the output can be" affects the number of dimensions in the latent space.
         self.n_noise = 256 #This will be the input value for generater.
+        #It might be better to categorize them by mode.
         self.epochs = 250
         self.n_fft = 1024
         self.min_db = -80.0
@@ -71,17 +73,20 @@ class AudioPreprocessor:
                 segments.append(padded_segment)
         return segments
 
-    #def preprocess_audio(self, audio):
-    #    #Converting audio data to melspectrograms
-    #    mel_spec = librosa.feature.melspectrogram(
-    #        y=audio, sr=self.sample_rate, n_mels=self.n_mels, hop_length=self.hop_length, n_fft=self.n_fft
-    #    )
-    #    mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
-    #    mel_spec_db = np.clip(mel_spec_db, self.min_db, self.max_db)
-    #    mel_spec_db = 2 * (mel_spec_db - self.min_db) / (self.max_db - self.min_db) - 1
-    #    print(f"Mel-spectrogram shape: {mel_spec_db.shape}")#Mel-spectrogram shape: (128, 87)
-    #    return mel_spec_db
-    def preprocess_audio(self, audio):
+    def preprocess_audio_mel(self, audio):
+        #Converting audio data to melspectrograms
+        mel_spec = librosa.feature.melspectrogram(
+            y=audio, sr=self.sample_rate, n_mels=self.n_mels, hop_length=self.hop_length, n_fft=self.n_fft
+        )
+        mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
+        mel_spec_db = np.clip(mel_spec_db, self.min_db, self.max_db)
+        mel_spec_db = 2 * (mel_spec_db - self.min_db) / (self.max_db - self.min_db) - 1
+        # Add channel dimension: (1, 128, 87)
+        mel_spec_db = mel_spec_db[np.newaxis, :, :]
+        # print(f"Mel-spectrogram shape: {mel_spec_db.shape}")
+        return mel_spec_db
+    
+    def preprocess_audio_stft(self, audio):
         # 1. Execute STFT (complex64)
         stft = librosa.stft(y=audio, n_fft=self.n_fft, hop_length=self.hop_length)
         
@@ -100,15 +105,19 @@ class AudioPreprocessor:
         mag_db = librosa.amplitude_to_db(magnitude, ref=np.max)
         # Normalization (-1 to 1)
         mag_norm = 2 * (mag_db - self.min_db) / (self.max_db - self.min_db) - 1
-        print(f"mag_norm shape: {mag_norm.shape}")
         
         phase_norm = phase_diff_wrapped / np.pi  # Scale to [-1, 1]
-        print(f"phase_norm shape: {phase_norm.shape}")
 
         # Stack the amplitude and phase to form a (2, Freq, Time) shape
         combined = np.stack([mag_norm, phase_norm], axis=0)
-        print(f"combined shape: {combined.shape}") #(2, 1025, 87)
+        # print(f"combined shape: {combined.shape}") #(2, 513, 87)
         return combined
+
+    def preprocess_audio(self, audio):
+        if self.mode == 'mel':
+            return self.preprocess_audio_mel(audio)
+        else:
+            return self.preprocess_audio_stft(audio)
 
     def process_all_files(self, audio_path):
         #Process all audio files in the directory and return a stft.

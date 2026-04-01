@@ -2,13 +2,14 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import argparse
 from prepareAudioMaterial import export_all_instruments
 from preProcess import AudioPreprocessor
 from generator import Generator
 from discriminator import Discriminator
 from generateNoise import generate_images, count_correct
 
-def trainModel(preprocessor, generator, discriminator, train_loader, device):
+def trainModel(preprocessor, generator, discriminator, train_loader, device, mode):
     # Binary cross-entropy error function
     loss_func = nn.BCELoss()
 
@@ -42,7 +43,7 @@ def trainModel(preprocessor, generator, discriminator, train_loader, device):
             #print(f"Input shape Generator: {noise.shape}")
             y = discriminator(imgs_fake)
 
-            #print("y ", y.shape)
+            #print(f"Output shape Discriminator: {y.shape}, Target shape: {t.shape}")
             loss = loss_func(y, t)
             optimizer_disc.zero_grad()
             loss.backward()
@@ -54,8 +55,10 @@ def trainModel(preprocessor, generator, discriminator, train_loader, device):
             imgs_real= x.to(device)
             t = torch.ones(x.size()[0], 1).to(device) # The correct answer is 1.
 
-            # print("second")
+            #print(f"Input shape Discriminator (real images): {imgs_real.shape}")
             y = discriminator(imgs_real)
+            
+            #print(f"Discriminator output shape for real images: {y.shape}, Target shape: {t.shape}")
             loss = loss_func(y, t)
             optimizer_disc.zero_grad()
             loss.backward()
@@ -64,11 +67,12 @@ def trainModel(preprocessor, generator, discriminator, train_loader, device):
             correct_real += count_correct(y, t)
 
             # Train the generator
-            noise = torch.randn(x.size()[0]*2, preprocessor.n_noise).to(device)  # Double the batch size
+            noise = torch.randn(x.size()[0], preprocessor.n_noise).to(device)  # Double the batch size
             imgs_fake = generator(noise)  # Image generation
-            t = torch.full((x.size()[0]*2, 1), 0.9).to(device)  # It looks real, but it's a little vague.
-            # print("third")
+            t = torch.full((x.size()[0], 1), 0.9).to(device)  # It looks real, but it's a little vague.
             y = discriminator(imgs_fake)
+            
+          #print(f"Generator training - Discriminator output shape: {y.shape}, Target shape: {t.shape}")
             loss = loss_func(y, t)
             optimizer_gen.zero_grad()
             loss.backward()
@@ -94,32 +98,27 @@ def trainModel(preprocessor, generator, discriminator, train_loader, device):
             #generate_images(generator, preprocessor, device)
 
     # Save trained model
-    torch.save(generator.state_dict(), "model/generator.pth")
-    torch.save(discriminator.state_dict(), "model/discriminator.pth")
-
-    # export as onnx model
-    generator.eval()
-    dummy_input = torch.randn(1, preprocessor.n_noise).to(device)
-    torch.onnx.export(generator,
-                    dummy_input,
-                    "model/generator.onnx",
-                    export_params=True,
-                    opset_version=10,
-                    do_constant_folding=True, # Constant folding optimization
-                    input_names = ['input'],
-                    output_names = ['output'],
-                    dynamic_axes={'input' : {0 : 'batch_size'}, 'output' : {0 : 'batch_size'}})
-    print("The model has been saved.")
-
+    if mode == 'mel':
+        torch.save(generator.state_dict(), "model/generatorMel.pth")
+        torch.save(discriminator.state_dict(), "model/discriminatorMel.pth")
+        print("Models saved for Mel mode.")
+        
+    else:
+        torch.save(generator.state_dict(), "model/generatorSTFT.pth")
+        torch.save(discriminator.state_dict(), "model/discriminatorSTFT.pth")
+        print("Models saved for STFT mode.")
 
 if __name__ == "__main__":
-    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", type=str, default="stft", choices=["stft", "mel"], help="Preprocessing mode")
+    args = parser.parse_args()
     
     targetSamplerate = 22050
 
-    export_all_instruments(targetSamplerate)
+    #Export all instruments only on the first run. You may comment this out for subsequent runs.
+    #export_all_instruments(targetSamplerate)
 
-    preprocessor = AudioPreprocessor(targetSamplerate )
+    preprocessor = AudioPreprocessor(targetSamplerate, mode=args.mode)
     train_loader, n_in_out = preprocessor.get_trainloder()
 
     generator = Generator(preprocessor)  # preprocessor is passed during training
@@ -134,4 +133,4 @@ if __name__ == "__main__":
     discriminator.to(device)
     #print(discriminator)
 
-    trainModel(preprocessor, generator, discriminator, train_loader, device)
+    trainModel(preprocessor, generator, discriminator, train_loader, device, mode=args.mode)

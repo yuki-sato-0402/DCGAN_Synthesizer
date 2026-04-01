@@ -6,38 +6,49 @@ class Generator(nn.Module):
     def __init__(self, preprocessor):
         super().__init__()
         self.preprocessor = preprocessor
-        '''
-        DCGAN For input size 𝑊, kernel size 𝐾, padding p, and stride s, ((𝑊−1)×𝑠−𝑝×2+𝐾)
-        Starting with input noise, gradually expand using the inverse convolution operation.
-        Calculate the initial size and work backwards: 17 -> 33 -> 65 -> 129 -> 257 -> 513,
-        3 -> 6 -> 11 -> 22 -> 44 -> 87
-        '''
-
-        # Projection layer - Create small feature maps from noise vectors
-        self.init_h = 17
+        #Retrieve an attribute (variable) from an object by name
+        self.mode = getattr(preprocessor, 'mode', 'stft')
+        
+        # Projection layer
+        if self.mode == 'mel':
+            self.init_h = 4
+            self.out_channels = 1
+        else:
+            self.init_h = 17
+            self.out_channels = 2
+            
         self.init_w = 3
         self.projection = nn.Linear(self.preprocessor.n_noise, 256 * self.init_h * self.init_w)
         self.bn_proj = nn.BatchNorm1d(256 * self.init_h * self.init_w)
 
         # Expansion using convolutional transposition layers
-        # 17x3 → 33x6 ((3 - 1)* 2 - 0 + 4) = 8
-        self.convt1 = nn.ConvTranspose2d(256, 128, kernel_size=(3, 4), stride=2, padding=1)
+        if self.mode == 'mel':
+            # 4x3 -> 8x6
+            self.convt1 = nn.ConvTranspose2d(256, 128, kernel_size=(4, 4), stride=2, padding=1)
+            # 8x6 -> 16x11
+            self.convt2 = nn.ConvTranspose2d(128, 64, kernel_size=(4, 3), stride=2, padding=1)
+            # 16x11 -> 32x22
+            self.convt3 = nn.ConvTranspose2d(64, 32, kernel_size=(4, 4), stride=2, padding=1)
+            # 32x22 -> 64x44
+            self.convt4 = nn.ConvTranspose2d(32, 16, kernel_size=(4, 4), stride=2, padding=1)
+            # 64x44 -> 128x87
+            self.convt5 = nn.ConvTranspose2d(16, self.out_channels, kernel_size=(4, 3), stride=2, padding=1)
+        else:
+            # 17x3 → 33x6
+            self.convt1 = nn.ConvTranspose2d(256, 128, kernel_size=(3, 4), stride=2, padding=1)
+            # 33x6 → 65x11
+            self.convt2 = nn.ConvTranspose2d(128, 64, kernel_size=(3, 3), stride=2, padding=1)
+            # 65x11 → 129x22
+            self.convt3 = nn.ConvTranspose2d(64, 32, kernel_size=(3, 4), stride=2, padding=1)
+            # 129x22 → 257x44
+            self.convt4 = nn.ConvTranspose2d(32, 16, kernel_size=(3, 4), stride=2, padding=1)
+            # 257x44 → 513x87
+            self.convt5 = nn.ConvTranspose2d(16, self.out_channels, kernel_size=(3, 3), stride=2, padding=1)
+
         self.bn1 = nn.BatchNorm2d(128)
-
-        # 33x6 → 65x11 ((6 - 1)* 2 - 0 + 4) = 16
-        self.convt2 = nn.ConvTranspose2d(128, 64, kernel_size=(3, 3), stride=2, padding=1)
         self.bn2 = nn.BatchNorm2d(64)
-
-        # 65x11 → 129x22 ((11 - 1)* 2 - 0 + 4) = 32
-        self.convt3 = nn.ConvTranspose2d(64, 32, kernel_size=(3, 4), stride=2, padding=1)
         self.bn3 = nn.BatchNorm2d(32)
-
-        # 129x22 → 257x44 ((22 - 1)* 2 - 0 + 4) = 64
-        self.convt4 = nn.ConvTranspose2d(32, 16, kernel_size=(3, 4), stride=2, padding=1)
         self.bn4 = nn.BatchNorm2d(16)
-
-        # 257x44 → 513x87 ((44 - 1)* 2 - 0 + 4) = 128
-        self.convt5 = nn.ConvTranspose2d(16, 2, kernel_size=(3, 3), stride=2, padding=1)
 
     def forward(self, x):
 
@@ -62,6 +73,7 @@ class Generator(nn.Module):
 
         # Final layer - Output restricted to [-1, 1] with tanh activation function
         x = torch.tanh(self.convt5(x))   
-        # print(f"5: {x.shape}")
+        #x = x[:, :, :, :173]
+        #print(f"5: {x.shape}")
         return x
 

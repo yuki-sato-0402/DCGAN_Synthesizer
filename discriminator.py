@@ -6,13 +6,13 @@ class Discriminator(nn.Module):
     def __init__(self, preprocessor):
         super().__init__()
         self.preprocessor = preprocessor
-        '''
-        DCGAN ((𝑊+{𝑝×2}−𝐾)/𝑠+1)
-        Feature extraction and downsampling using convolutional layers
-        In the DCGAN paper, BatchNorm is recommended for Discriminator layers other than the first layer.
-        '''
-        # 513x87 → 256x43
-        self.conv1 = nn.Conv2d(2, 16, kernel_size=4, stride=2, padding=1)
+        self.mode = getattr(preprocessor, 'mode', 'stft')
+        
+        # in_channels: 2 for STFT (mag + phase), 1 for Mel
+        in_channels = 1 if self.mode == 'mel' else 2
+        
+        # 513x87 (or 128x87) → 256x43 (or 64x43)
+        self.conv1 = nn.Conv2d(in_channels, 16, kernel_size=4, stride=2, padding=1)
        
         # 256x43 → 128x21
         self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2, padding=1)
@@ -30,8 +30,10 @@ class Discriminator(nn.Module):
         self.conv5 = nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1)
         self.bn5 = nn.BatchNorm2d(256)
 
-        # 16x2 → 1x1
-        self.conv6 = nn.Conv2d(256, 1, kernel_size=(16, 2), stride=1, padding=0)
+        # Global average pooling to reduce the spatial dimensions to 1x1
+        self.pool = nn.AdaptiveAvgPool2d((1, 1))
+ 
+        self.conv6 = nn.Conv2d(256, 1, kernel_size=1)
 
         # Dropout (optional - improves model stability)
         self.dropout = nn.Dropout2d(0.3)
@@ -61,7 +63,10 @@ class Discriminator(nn.Module):
         # print(f"After conv4: {x.shape}")
 
         x = F.leaky_relu(self.bn5(self.conv5(x)), negative_slope=0.2)
-        # print(f"After conv5: {x.shape}")
+        #print(f"After conv5: {x.shape}")
+        
+        x = self.pool(x)  # Global average pooling
+        #print(f"After pooling: {x.shape}")
 
         # Final layer - Outputs probabilities between 0 and 1 using sigmoid activation
         x = torch.sigmoid(self.conv6(x))
